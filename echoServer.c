@@ -14,6 +14,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "ssl_util.h"
+
 #define	QLEN		  32	/* maximum connection queue length	*/
 #define	BUFSIZE		4096
 
@@ -46,6 +48,8 @@ main(int argc, char *argv[])
 	default:
 		errexit("usage: TCPmechod [port]\n");
 	}
+
+    init_ssl();
 
 	msock = passivesock(portnum, QLEN);
 

@@ -1,6 +1,6 @@
 OUT=client server
 
-DEPENDENCIES=verify.c
+# DEPENDENCIES=verify.c
 
 # compiler
 CC=gcc
