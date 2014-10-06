@@ -1,15 +1,21 @@
 #include <openssl/ssl.h>
-#include <openssl/bio.h>
+
+
+
+// #include <openssl/bio.h>
+// #include <openssl/x509.h>
 
 // static int verify(const char* certfile, const char* CAfile);
 // static X509 *load_cert(const char *file);
 // static int check(X509_STORE *ctx, const char *file);
 
-// static void init_ssl()
-// {
-//     SSL_library_init();  load encryption & hash algorithms for SSL
-//     SSL_load_error_strings(); /* load the error strings for good error reporting */
-// }
+static void init_ssl()
+{
+    SSL_library_init();  /* load encryption & hash algorithms for SSL */
+    SSL_load_error_strings(); /* load the error strings for good error reporting */
+
+    // ssl = SSL_new(ctx);
+}
 
 static X509 *load_cert(const char *file)
 {

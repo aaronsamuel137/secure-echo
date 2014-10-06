@@ -14,22 +14,30 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <openssl/crypto.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 #include "ssl_util.h"
 
 #define	QLEN		  32	/* maximum connection queue length	*/
 #define	BUFSIZE		4096
+#define SERVER_CERT "server.cert"
+#define SERVER_KEY  "server_priv.key"
+
+#define RETURN_NULL(x) if ((x)==NULL) exit(1)
+#define RETURN_ERR(err,s) if ((err)==-1) { perror(s); exit(1); }
+#define RETURN_SSL(err) if ((err)==-1) { ERR_print_errors_fp(stderr); exit(1); }
 
 extern int	errno;
 int		errexit(const char *format, ...);
 int		passivesock(const char *portnum, int qlen);
-int		echo(int fd);
+int     echo(SSL *ssl);
 
 /*------------------------------------------------------------------------
  * main - Concurrent TCP server for ECHO service
  *------------------------------------------------------------------------
  */
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	char	*portnum = "5004";	/* Standard server port number	*/
 	struct sockaddr_in fsin;	/* the from address of a client	*/
@@ -38,6 +46,10 @@ main(int argc, char *argv[])
 	fd_set	afds;			/* active file descriptor set	*/
 	unsigned int	alen;		/* from-address length		*/
 	int	fd, nfds;
+    int err;
+    SSL_CTX         *ctx;
+    SSL             *ssl;
+    SSL_METHOD      *meth;
 
 	switch (argc) {
 	case	1:
@@ -49,7 +61,40 @@ main(int argc, char *argv[])
 		errexit("usage: TCPmechod [port]\n");
 	}
 
-    init_ssl();
+    /* Load encryption & hashing algorithms for the SSL program */
+    SSL_library_init();
+
+    /* Load the error strings for SSL & CRYPTO APIs */
+    SSL_load_error_strings();
+
+    /* Create a SSL_METHOD structure (choose a SSL/TLS protocol version) */
+    meth = SSLv3_method();
+
+    /* Create a SSL_CTX structure */
+    ctx = SSL_CTX_new(meth);
+
+    if (!ctx) {
+        ERR_print_errors_fp(stderr);
+        exit(1);
+    }
+
+    /* Load the server certificate into the SSL_CTX structure */
+    if (SSL_CTX_use_certificate_file(ctx, SERVER_CERT, SSL_FILETYPE_PEM) <= 0) {
+        ERR_print_errors_fp(stderr);
+        exit(1);
+    }
+
+    /* Load the private-key corresponding to the server certificate */
+    if (SSL_CTX_use_PrivateKey_file(ctx, SERVER_KEY, SSL_FILETYPE_PEM) <= 0) {
+        ERR_print_errors_fp(stderr);
+        exit(1);
+    }
+
+    /* Check if the server certificate and private-key matches */
+    if (!SSL_CTX_check_private_key(ctx)) {
+        fprintf(stderr, "Private key does not match the certificate public key\n");
+        exit(1);
+    }
 
 	msock = passivesock(portnum, QLEN);
 
@@ -66,15 +111,29 @@ main(int argc, char *argv[])
 	while (1) {
 		memcpy(&rfds, &afds, sizeof(rfds));
 
-		if (select(nfds, &rfds, (fd_set *)0, (fd_set *)0,
-				(struct timeval *)0) < 0)
+		if (select(nfds, &rfds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0)
 			errexit("select: %s\n", strerror(errno));
 		if (FD_ISSET(msock, &rfds)) {
 			int	ssock;
 
+            /* A SSL structure is created */
+            ssl = SSL_new(ctx);
+
+            RETURN_NULL(ssl);
+
+            /* Assign the socket into the SSL structure (SSL and socket without BIO) */
+            SSL_set_fd(ssl, ssock);
+
+            /* Perform SSL Handshake on the SSL server */
+            err = SSL_accept(ssl);
+
+            RETURN_SSL(err);
+
+            /* Informational output (optional) */
+            printf("SSL connection using %s\n", SSL_get_cipher (ssl));
+
 			alen = sizeof(fsin);
-			ssock = accept(msock, (struct sockaddr *)&fsin,
-				&alen);
+			// ssock = accept(msock, (struct sockaddr *)&fsin, &alen);
 			if (ssock < 0)
 				errexit("accept: %s\n",
 					strerror(errno));
@@ -82,7 +141,7 @@ main(int argc, char *argv[])
 		}
 		for (fd=0; fd<nfds; ++fd)
 			if (fd != msock && FD_ISSET(fd, &rfds))
-				if (echo(fd) == 0) {
+				if (echo(ssl) == 0) {
 					(void) close(fd);
 					FD_CLR(fd, &afds);
 				}
@@ -93,17 +152,29 @@ main(int argc, char *argv[])
  * echo - echo one buffer of data, returning byte count
  *------------------------------------------------------------------------
  */
-int
-echo(int fd)
+int echo(SSL *ssl)
 {
-	char	buf[BUFSIZ];
-	int	cc;
+	char buf[BUFSIZ];
+	int	cc, n;
 
-	cc = read(fd, buf, sizeof buf);
+    cc = SSL_read(ssl, buf, sizeof(buf) - 1);
+
+    RETURN_SSL(cc);
+
+    buf[cc] = '\0';
+
+    printf ("Received %d chars:'%s'\n", cc, buf);
+
 	if (cc < 0)
 		errexit("echo read: %s\n", strerror(errno));
-	if (cc && write(fd, buf, cc) < 0)
-		errexit("echo write: %s\n", strerror(errno));
+	if (cc)
+    {
+        /* Send data to the SSL client */
+        n = SSL_write(ssl, buf, cc);
+        RETURN_SSL(n);
+        if (n < 0)
+            errexit("echo write: %s\n", strerror(errno));
+    }
 	return cc;
 }
 
@@ -171,4 +242,3 @@ passivesock(const char *portnum, int qlen)
             errexit("can't listen on %s port: %s\n", portnum, strerror(errno));
         return s;
 }
-
