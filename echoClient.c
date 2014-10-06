@@ -20,13 +20,13 @@
 #define INADDR_NONE     0xffffffff
 #endif  /* INADDR_NONE */
 
-extern int	errno;
+extern int  errno;
 
-int	TCPecho(const char *host, const char *portnum);
-int	errexit(const char *format, ...);
-int	connectsock(const char *host, const char *portnum);
+int TCPecho(const char *host, const char *portnum);
+int errexit(const char *format, ...);
+int connectsock(const char *host, const char *portnum);
 
-#define	LINELEN		128
+#define LINELEN     128
 
 #define RETURN_NULL(x) if ((x)==NULL) exit (1)
 #define RETURN_ERR(err,s) if ((err)==-1) { perror(s); exit(1); }
@@ -41,25 +41,25 @@ int	connectsock(const char *host, const char *portnum);
 int
 main(int argc, char *argv[])
 {
-	char	*host = "localhost";	/* host to use if none supplied	*/
-	char	*portnum = "5004";	/* default server port number	*/
+    char    *host = "localhost";    /* host to use if none supplied */
+    char    *portnum = "5004";  /* default server port number   */
 
-	switch (argc) {
-	case 1:
-		host = "localhost";
-		break;
-	case 3:
-		host = argv[2];
-		/* FALL THROUGH */
-	case 2:
-		portnum = argv[1];
-		break;
-	default:
-		fprintf(stderr, "usage: TCPecho [host [port]]\n");
-		exit(1);
-	}
-	TCPecho(host, portnum);
-	exit(0);
+    switch (argc) {
+    case 1:
+        host = "localhost";
+        break;
+    case 3:
+        host = argv[2];
+        /* FALL THROUGH */
+    case 2:
+        portnum = argv[1];
+        break;
+    default:
+        fprintf(stderr, "usage: TCPecho [host [port]]\n");
+        exit(1);
+    }
+    TCPecho(host, portnum);
+    exit(0);
 }
 
 /*------------------------------------------------------------------------
@@ -69,9 +69,9 @@ main(int argc, char *argv[])
 int
 TCPecho(const char *host, const char *portnum)
 {
-	char	buf[LINELEN+1];		/* buffer for one line of text	*/
-	int	s, n;			/* socket descriptor, read count*/
-	int	outchars, inchars;	/* characters sent and received	*/
+    char    buf[LINELEN+1];     /* buffer for one line of text  */
+    int s, n;           /* socket descriptor, read count*/
+    int outchars, inchars;  /* characters sent and received */
     char  *str;
     int err;
 
@@ -106,7 +106,7 @@ TCPecho(const char *host, const char *portnum)
     SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
     SSL_CTX_set_verify_depth(ctx, 1);
 
-	s = connectsock(host, portnum);
+    s = connectsock(host, portnum);
 
     // An SSL structure is created
     ssl = SSL_new(ctx);
@@ -146,20 +146,22 @@ TCPecho(const char *host, const char *portnum)
 
 
 
-	while (fgets(buf, sizeof(buf), stdin)) {
-		buf[LINELEN] = '\0'; //insure line null-terminated
-		outchars = strlen(buf);
-		(void) write(s, buf, outchars);
+    while (fgets(buf, sizeof(buf), stdin)) {
+        buf[LINELEN] = '\0'; //insure line null-terminated
+        outchars = strlen(buf);
 
-		/* read it back */
-		for (inchars = 0; inchars < outchars; inchars+=n ) {
-			n = read(s, &buf[inchars], outchars - inchars);
-			if (n < 0)
-				errexit("socket read failed: %s\n",
-					strerror(errno));
-		}
-		fputs(buf, stdout);
-	}
+        err = SSL_write(ssl, buf, outchars);
+        RETURN_SSL(err);
+
+        /* read it back */
+        for (inchars = 0; inchars < outchars; inchars+=n ) {
+            n = SSL_read(ssl, &buf[inchars], outchars - inchars);
+            RETURN_SSL(n);
+            if (n < 0)
+                errexit("socket read failed: %s\n", strerror(errno));
+        }
+        fputs(buf, stdout);
+    }
 }
 
 /*------------------------------------------------------------------------

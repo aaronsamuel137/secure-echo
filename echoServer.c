@@ -170,7 +170,6 @@ int echo(SSL *ssl)
 	int	cc, n;
 
     cc = SSL_read(ssl, buf, sizeof(buf) - 1);
-
     RETURN_SSL(cc);
 
     buf[cc] = '\0';
