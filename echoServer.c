@@ -28,6 +28,8 @@
 #define RETURN_ERR(err,s) if ((err)==-1) { perror(s); exit(1); }
 #define RETURN_SSL(err) if ((err)==-1) { ERR_print_errors_fp(stderr); exit(1); }
 
+#define LOGGING 1
+
 extern int	errno;
 int		errexit(const char *format, ...);
 int		passivesock(const char *portnum, int qlen);
@@ -97,6 +99,7 @@ int main(int argc, char *argv[])
     }
 
 	msock = passivesock(portnum, QLEN);
+    if (LOGGING) printf("msock is %d\n", msock);
 
 #ifdef __APPLE__
     // OSX workaround, can't have more than 1024 fds
@@ -113,8 +116,17 @@ int main(int argc, char *argv[])
 
 		if (select(nfds, &rfds, (fd_set *)0, (fd_set *)0, (struct timeval *)0) < 0)
 			errexit("select: %s\n", strerror(errno));
+
+        if (LOGGING) printf("after select\n");
+
 		if (FD_ISSET(msock, &rfds)) {
 			int	ssock;
+
+            alen = sizeof(fsin);
+            ssock = accept(msock, (struct sockaddr *)&fsin, &alen);
+            if (ssock < 0)
+                errexit("accept: %s\n", strerror(errno));
+            FD_SET(ssock, &afds);
 
             /* A SSL structure is created */
             ssl = SSL_new(ctx);
