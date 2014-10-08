@@ -12,9 +12,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include <openssl/crypto.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
+#include "ssl_util.h"
 
 #ifndef INADDR_NONE
 #define INADDR_NONE     0xffffffff
@@ -27,11 +25,6 @@ int errexit(const char *format, ...);
 int connectsock(const char *host, const char *portnum);
 
 #define LINELEN     128
-
-#define RETURN_NULL(x) if ((x)==NULL) exit (1)
-#define RETURN_ERR(err,s) if ((err)==-1) { perror(s); exit(1); }
-#define RETURN_SSL(err) if ((err)==-1) { ERR_print_errors_fp(stderr); exit(1); }
-
 #define RSA_CLIENT_CA_CERT "demoCA/cacert.pem"
 
 /*------------------------------------------------------------------------
@@ -76,24 +69,20 @@ TCPecho(const char *host, const char *portnum)
     int err;
 
     SSL_CTX        *ctx;
-    SSL            *ssl;
     SSL_METHOD     *meth;
+    SSL            *ssl;
     X509           *server_cert;
     EVP_PKEY       *pkey;
 
-    /* Load encryption & hashing algorithms for the SSL program */
-    SSL_library_init();
+    ssl_init();               // initialize ssl functions and error strings
+    meth = SSLv3_method();    // create a SSL_METHOD structure, in this case use SSLv3
+    ctx = SSL_CTX_new(meth);  // create a SSL_CTX structure
 
-    /* Load the error strings for SSL & CRYPTO APIs */
-    SSL_load_error_strings();
-
-    /* Create an SSL_METHOD structure (choose an SSL/TLS protocol version) */
-    meth = SSLv3_method();
-
-    /* Create an SSL_CTX structure */
-    ctx = SSL_CTX_new(meth);
-
-    RETURN_NULL(ctx);
+    // make sure no errors occured creating the ssl context
+    if (!ctx) {
+        ERR_print_errors_fp(stderr);
+        exit(1);
+    }
 
     // Load the RSA CA certificate into the SSL_CTX structure
     // This will allow this client to verify the server's certificate.
@@ -102,7 +91,7 @@ TCPecho(const char *host, const char *portnum)
         exit(1);
     }
 
-    // Set flag in context to require peer (server) certificate verification
+    // Set flag in the ssl context to require server certificate verification
     SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
     SSL_CTX_set_verify_depth(ctx, 1);
 
@@ -110,33 +99,41 @@ TCPecho(const char *host, const char *portnum)
 
     // An SSL structure is created
     ssl = SSL_new(ctx);
-    RETURN_NULL(ssl);
+    if (ssl == NULL) exit(1);
 
-    // Assign the socket into the SSL structure (SSL and socket without BIO)
+    // Assign the socket into the SSL structure
+    // From now on we can work with the ssl structure instead of the socket directly
     SSL_set_fd(ssl, s);
 
     // Perform SSL Handshake on the SSL client
     err = SSL_connect(ssl);
-    RETURN_SSL(err);
+    if (err < 0) {
+        ERR_print_errors_fp(stderr);
+        exit(1);
+    }
 
-    // Informational output (optional)
-    printf ("SSL connection using %s\n", SSL_get_cipher (ssl));
+    if (LOGGING) printf ("SSL connection using %s\n", SSL_get_cipher (ssl));
 
     // Get the server's certificate (optional)
     server_cert = SSL_get_peer_certificate(ssl);
 
-    if (server_cert != NULL)
-    {
-        printf ("Server certificate:\n");
+    if (server_cert != NULL) {
+        if (LOGGING) printf ("Server certificate:\n");
 
         str = X509_NAME_oneline(X509_get_subject_name(server_cert),0,0);
-        RETURN_NULL(str);
-        printf ("\t subject: %s\n", str);
+        if (str == NULL) {
+            printf("Error: X509_NAME_oneline returned NULL\n");
+            exit(1);
+        }
+        if (LOGGING) printf ("\t subject: %s\n", str);
         free (str);
 
         str = X509_NAME_oneline(X509_get_issuer_name(server_cert),0,0);
-        RETURN_NULL(str);
-        printf ("\t issuer: %s\n", str);
+        if (str == NULL) {
+            printf("Error: X509_NAME_oneline returned NULL\n");
+            exit(1);
+        }
+        if (LOGGING) printf ("\t issuer: %s\n", str);
         free(str);
 
         X509_free (server_cert);
@@ -151,14 +148,18 @@ TCPecho(const char *host, const char *portnum)
         outchars = strlen(buf);
 
         err = SSL_write(ssl, buf, outchars);
-        RETURN_SSL(err);
+        if (err < 0) {
+            ERR_print_errors_fp(stderr);
+            exit(1);
+        }
 
         /* read it back */
         for (inchars = 0; inchars < outchars; inchars+=n ) {
             n = SSL_read(ssl, &buf[inchars], outchars - inchars);
-            RETURN_SSL(n);
-            if (n < 0)
-                errexit("socket read failed: %s\n", strerror(errno));
+            if (n < 0) {
+                ERR_print_errors_fp(stderr);
+                exit(1);
+            }
         }
         fputs(buf, stdout);
     }

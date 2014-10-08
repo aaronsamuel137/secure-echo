@@ -14,17 +14,12 @@
 #include <string.h>
 #include <stdio.h>
 
-#include <openssl/crypto.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
 #include "ssl_util.h"
 
 #define QLEN          32    /* maximum connection queue length  */
 #define BUFSIZE     4096
 #define SERVER_CERT "server.cert"
 #define SERVER_KEY  "server_priv.key"
-
-#define LOGGING 1 // toggle logging
 
 extern int  errno;
 int     errexit(const char *format, ...);
@@ -47,8 +42,8 @@ int main(int argc, char *argv[])
     int err;
 
     SSL_CTX         *ctx;
-    SSL             *ssl;
     SSL_METHOD      *meth;
+    SSL             *ssl;
 
     switch (argc) {
     case    1:
@@ -60,15 +55,11 @@ int main(int argc, char *argv[])
         errexit("usage: TCPmechod [port]\n");
     }
 
-    SSL_library_init(); // load ssl library encryption and hashing functions
-    SSL_load_error_strings(); // load error reporting stings for openssl functions
+    ssl_init();               // initialize ssl functions and error strings
+    meth = SSLv3_method();    // create a SSL_METHOD structure, in this case use SSLv3
+    ctx = SSL_CTX_new(meth);  // create a SSL_CTX structure
 
-    // Create a SSL_METHOD structure, in this case use SSLv3
-    meth = SSLv3_method();
-
-    // Create a SSL_CTX structure
-    ctx = SSL_CTX_new(meth);
-
+    // make sure no errors occured creating the ssl context
     if (!ctx) {
         ERR_print_errors_fp(stderr);
         exit(1);
@@ -80,6 +71,8 @@ int main(int argc, char *argv[])
         ERR_print_errors_fp(stderr);
         exit(1);
     }
+
+    printf("after\n");
 
     // Load the private-key corresponding to the server certificate
     if (SSL_CTX_use_PrivateKey_file(ctx, SERVER_KEY, SSL_FILETYPE_PEM) <= 0) {
