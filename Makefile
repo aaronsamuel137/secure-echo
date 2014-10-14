@@ -1,7 +1,6 @@
 OUT=client server
 
-FLAGS=-lssl -lcrypto
-#-Wno-deprecated-declarations
+FLAGS=-lssl -lcrypto -Wno-deprecated-declarations
 
 # compiler
 CC=gcc
