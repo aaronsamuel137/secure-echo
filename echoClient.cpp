@@ -70,8 +70,13 @@ TCPecho(const char *host, const char *portnum)
     char  *str;
     int err;
 
+#ifdef __APPLE__
+    SSL_METHOD      *meth;
+#else
+    const SSL_METHOD *meth;
+#endif
+
     SSL_CTX        *ctx;
-    SSL_METHOD     *meth;
     SSL            *ssl;
     X509           *server_cert;
     EVP_PKEY       *pkey;

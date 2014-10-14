@@ -42,8 +42,13 @@ int main(int argc, char *argv[])
     int fd, nfds;
     int err;
 
-    SSL_CTX         *ctx;
+#ifdef __APPLE__
     SSL_METHOD      *meth;
+#else
+    const SSL_METHOD *meth;
+#endif
+
+    SSL_CTX         *ctx;
     SSL             *ssl;
 
     switch (argc) {
@@ -231,7 +236,7 @@ passivesock(const char *portnum, int qlen)
             if (bind(s, (struct sockaddr *)&sin, sizeof(sin)) < 0)
                 errexit("can't bind: %s\n", strerror(errno));
             else {
-                int socklen = sizeof(sin);
+                socklen_t socklen = sizeof(sin);
 
                 if (getsockname(s, (struct sockaddr *)&sin, &socklen) < 0)
                         errexit("getsockname: %s\n", strerror(errno));
