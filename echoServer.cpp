@@ -41,6 +41,7 @@ int main(int argc, char *argv[])
     unsigned int    alen;       /* from-address length          */
     int fd, nfds;
     int err;
+    std::map<int, SSL*> ssls;   // keep track of all ssl structures for different clients
 
 #ifdef __APPLE__
     SSL_METHOD      *meth;
@@ -132,6 +133,9 @@ int main(int argc, char *argv[])
             // From now on, we can deal with the ssl structure and not the socket directly
             SSL_set_fd(ssl, ssock);
 
+            // add this SSL structure to the ssls map to enable multiple clients
+            ssls[ssock] = ssl;
+
             // Perform SSL Handshake on the SSL server
             err = SSL_accept(ssl);
             if (err < 0) {
@@ -144,9 +148,10 @@ int main(int argc, char *argv[])
 
         for (fd=0; fd < nfds; ++fd)
             if (fd != msock && FD_ISSET(fd, &rfds))
-                if (echo(ssl) == 0) {
+                if (echo(ssls[fd]) == 0) {
                     (void) close(fd);
                     FD_CLR(fd, &afds);
+                    ssls.erase(fd);
                 }
     }
 }
