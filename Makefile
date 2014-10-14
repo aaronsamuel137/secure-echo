@@ -1,8 +1,7 @@
 OUT=client server
 
-# DEPENDENCIES=verify.c
-FLAGS=-lssl -lcrypto -Wno-deprecated-declarations
- # -Iopenssl/openssl-1.0.1i/include
+FLAGS=-lssl -lcrypto
+#-Wno-deprecated-declarations
 
 # compiler
 CC=gcc
@@ -11,10 +10,10 @@ CC=gcc
 all: client server
 
 client:
-	$(CC) $(FLAGS) -o client echoClient.c $(DEPENDENCIES)
+	$(CC) -o echoClient echoClient.c $(FLAGS)
 
 server:
-	$(CC) $(FLAGS) -o server echoServer.c $(DEPENDENCIES)
+	$(CC) -o echoServer echoServer.c $(FLAGS)
 
 clean:
 	rm $(OUT)
