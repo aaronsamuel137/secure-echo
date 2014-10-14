@@ -26,8 +26,6 @@ int connectsock(const char *host, const char *portnum);
 
 #define LINELEN        128
 #define CLIENT_CA_CERT "demoCA/cacert.pem"
-#define CLIENT_CA_KEY  "demoCA/private/cakey.pem"
-#define PASSWORD       "netsys_2014"
 
 /*------------------------------------------------------------------------
  * main - TCP client for ECHO service
@@ -90,15 +88,6 @@ TCPecho(const char *host, const char *portnum)
         ERR_print_errors_fp(stderr);
         exit(1);
     }
-
-    // Set password callback
-    // SSL_CTX_set_default_passwd_cb_userdata(ctx, PASSWORD);
-
-    // // Load the local private key from the location specified by keyFile
-    // if ( SSL_CTX_use_PrivateKey_file(ctx, CLIENT_CA_KEY, SSL_FILETYPE_PEM) != 1 ){
-    //     printf("Unable to load privatekey file\n");
-    //     exit(0);
-    // }
 
     // Load the RSA CA certificate into the SSL_CTX structure
     // This will allow this client to verify the server's certificate.
