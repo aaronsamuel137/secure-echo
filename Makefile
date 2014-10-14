@@ -1,18 +1,18 @@
-OUT=client server
+OUT=echoClient echoServer
 
 FLAGS=-lssl -lcrypto -Wno-deprecated-declarations
 
 # compiler
-CC=gcc
+CC=g++
 
 #  Main target
 all: client server
 
 client:
-	$(CC) -o echoClient echoClient.c $(FLAGS)
+	$(CC) -o echoClient echoClient.cpp $(FLAGS)
 
 server:
-	$(CC) -o echoServer echoServer.c $(FLAGS)
+	$(CC) -o echoServer echoServer.cpp $(FLAGS)
 
 clean:
 	rm $(OUT)

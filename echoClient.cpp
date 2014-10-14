@@ -87,13 +87,13 @@ TCPecho(const char *host, const char *portnum)
     }
 
     // Set password callback
-    SSL_CTX_set_default_passwd_cb_userdata(ctx, PASSWORD);
+    // SSL_CTX_set_default_passwd_cb_userdata(ctx, PASSWORD);
 
-    // Load the local private key from the location specified by keyFile
-    if ( SSL_CTX_use_PrivateKey_file(ctx, CLIENT_CA_KEY, SSL_FILETYPE_PEM) != 1 ){
-        printf("Unable to load privatekey file\n");
-        exit(0);
-    }
+    // // Load the local private key from the location specified by keyFile
+    // if ( SSL_CTX_use_PrivateKey_file(ctx, CLIENT_CA_KEY, SSL_FILETYPE_PEM) != 1 ){
+    //     printf("Unable to load privatekey file\n");
+    //     exit(0);
+    // }
 
     // Load the RSA CA certificate into the SSL_CTX structure
     // This will allow this client to verify the server's certificate.
