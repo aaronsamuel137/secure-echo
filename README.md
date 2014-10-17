@@ -11,6 +11,10 @@ compiling
 ---------
 Type 'make' in the project directory.
 
+By default, the code will be compiled with logging enabled, which means that
+some informational messages will be printed as well as just the echo service.
+To disable logging, turn off the logging flag in ssl_util.h and recompile.
+
 running the program
 -------------------
 Start the server with:
