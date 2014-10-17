@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
     std::map<int, SSL*> ssls;   // keep track of all ssl structures for different clients
 
 #ifdef __APPLE__
-    SSL_METHOD      *meth;
+    SSL_METHOD       *meth;
 #else
     const SSL_METHOD *meth;
 #endif
